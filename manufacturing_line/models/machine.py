@@ -1,13 +1,17 @@
 from dataclasses import dataclass
+from numbers import Number
+from typing import Union
 
 import simpy
+
+from manufacturing_line import distributions as dist
 
 
 
 @dataclass
 class Machine:
     name : str
-    speed : float
+    processing_time : Union[dist.Distribution, Number]
     input_buffer : str
     output_buffer : str
 
@@ -21,7 +25,7 @@ class _Machine:
         self.name = machine.name
         self.input_buffer = objects[machine.input_buffer]
         self.output_buffer = objects[machine.output_buffer]
-        self.speed = machine.speed
+        self.processing_time = dist._create_spicy_dist(machine.processing_time)
 
         # Stats
         self.time_starved = 0
@@ -44,7 +48,7 @@ class _Machine:
             self.time_starved += (processing_start-starving_start)
 
             # Processing
-            yield self.env.timeout(self.speed)
+            yield self.env.timeout(self.processing_time.rvs())
             blocked_start = self.env.now
             self.items_processed += 1
             self.time_processing += (blocked_start-processing_start)

@@ -1,60 +1,89 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from numbers import Number
+from typing import Union
+
+import numpy as np
 from scipy import stats
 
 
 
-@dataclass
-class Exponential:
-    mean: float = 1
-    min: float = 0
+class Distribution(ABC):
+    @abstractmethod
+    def _scipy_dist(self):
+        pass
 
 
 
 @dataclass
-class Normal:
-    mean: float = 0
-    std: float = 1
+class Constant(Distribution):
+    value: Number = 1
+
+    def _scipy_dist(self):
+        return self
+
+    def rvs(self, size:int=1):
+        if size > 1:
+            return np.repeat(self.value, repeats=size)
+        return self.value
 
 
 
 @dataclass
-class Triangular:
-    min: float = 0
-    mode: float = 0.5
-    max: float = 1
+class Exponential(Distribution):
+    mean: Number = 1
+    min: Number = 0
 
-
-
-@dataclass
-class Uniform:
-    min: float = 0
-    max: float = 1
-
-
-
-def _get_scipy_distribution(dist):
-
-    if isinstance(dist, Exponential):
+    def _scipy_dist(self):
         return stats.expon(
-            loc = dist.min,
-            scale = dist.mean - dist.min
+            loc = self.min,
+            scale = self.mean - self.min
         )
 
-    elif isinstance(dist, Normal):
+
+
+@dataclass
+class Normal(Distribution):
+    mean: Number = 0
+    std: Number = 1
+
+    def _scipy_dist(self):
         return stats.norm(
-            loc = dist.mean,
-            scale = dist.std    
+            loc = self.mean,
+            scale = self.std    
         )
 
-    elif isinstance(dist, Triangular):
+
+
+@dataclass
+class Triangular(Distribution):
+    min: Number = 0
+    mode: Number = 0.5
+    max: Number = 1
+
+    def _scipy_dist(self):
         return stats.triang(
-            loc = dist.min,
-            scale = dist.max - dist.min,
-            c = (dist.mode-dist.min) / (dist.max-dist.min)
+            loc = self.min,
+            scale = self.max - self.min,
+            c = (self.mode-self.min) / (self.max-self.min)
         )
 
-    elif isinstance(dist, Uniform):
+
+
+@dataclass
+class Uniform(Distribution):
+    min: Number = 0
+    max: Number = 1
+
+    def _scipy_dist(self):
         return stats.uniform(
-            loc = dist.min,
-            scale = dist.max - dist.min
+            loc = self.min,
+            scale = self.max - self.min
         )
+
+
+
+def _create_spicy_dist(dist:Union[Distribution, Number]):
+    if isinstance(dist, Number):
+        dist = Constant(dist)
+    return dist._scipy_dist()

@@ -1,13 +1,17 @@
 from dataclasses import dataclass
+from numbers import Number
+from typing import Union
 
 import simpy
+
+from manufacturing_line import distributions as dist
 
 
 
 @dataclass
 class Source:
     name : str
-    speed : float
+    creation_time : Union[dist.Distribution, Number]
     output_buffer : str
 
 
@@ -19,7 +23,7 @@ class _Source:
         # Properties
         self.name = source.name
         self.output_buffer = objects[source.output_buffer]
-        self.speed = source.speed
+        self.creation_time = dist._create_spicy_dist(source.creation_time)
 
         # Stats
         self.items_created = 0
@@ -29,11 +33,12 @@ class _Source:
         self.env = env
         self.process = self.env.process(self.produce())
 
+
     def produce(self):
         while True:
 
             # Create
-            yield self.env.timeout(self.speed)
+            yield self.env.timeout(self.creation_time.rvs())
             self.items_created += 1
 
             # Blocked
