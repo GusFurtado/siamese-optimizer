@@ -5,19 +5,23 @@ from typing import Union
 import simpy
 
 from manufacturing_line import distributions as dist
+from .model import Model
 
 
 
 @dataclass
-class Machine:
+class Machine(Model):
     name : str
     processing_time : Union[dist.Distribution, Number]
     input_buffer : str
     output_buffer : str
 
+    def _model_type(self):
+        return _Machine
 
 
-class _Machine:
+
+class _Machine(Model):
 
     def __init__(self, env:simpy.Environment, machine:Machine, objects:dict):
         
@@ -56,3 +60,16 @@ class _Machine:
             # Blocked
             yield self.output_buffer.buffer.put(part)
             self.time_blocked += (self.env.now-blocked_start)
+
+
+    @property
+    def report(self) -> str:
+        return f'''
+            {self.name}
+            {'-' * len(self.name)}
+            Model type       :  Machine
+            Items processed  :  {self.items_processed}
+            Time starved     :  {self.time_starved}
+            Time processing  :  {self.time_processing}
+            Time blocked     :  {self.time_blocked}
+        '''

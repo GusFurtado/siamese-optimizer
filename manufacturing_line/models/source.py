@@ -5,18 +5,22 @@ from typing import Union
 import simpy
 
 from manufacturing_line import distributions as dist
+from .model import Model
 
 
 
 @dataclass
-class Source:
+class Source(Model):
     name : str
     creation_time : Union[dist.Distribution, Number]
     output_buffer : str
 
+    def _model_type(self):
+        return _Source
 
 
-class _Source:
+
+class _Source(Model):
 
     def __init__(self, env:simpy.Environment, source:Source, objects:dict):
         
@@ -45,3 +49,14 @@ class _Source:
             blocked_start = self.env.now
             yield self.output_buffer.buffer.put(1)
             self.time_blocked += (self.env.now-blocked_start)
+
+
+    @property
+    def report(self) -> str:
+        return f'''
+            {self.name}
+            {'-' * len(self.name)}
+            Model type       :  Source
+            Items created    :  {self.items_created}
+            Time blocked     :  {self.time_blocked}
+        '''

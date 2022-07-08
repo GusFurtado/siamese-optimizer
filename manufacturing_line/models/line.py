@@ -6,29 +6,37 @@ import simpy
 from .buffer import Buffer, _Buffer
 from .machine import Machine, _Machine
 from .source import Source, _Source
+from .model import Model
 
 
 
 class Line:
 
-    def __init__(
-            self,
-            sources: List[Source],
-            machines: List[Machine],
-            buffers: List[Buffer]
-        ):
+    def __init__(self, *models):
 
         self.env = simpy.Environment()
-        self._add_objects(buffers, _Buffer)
-        self._add_objects(sources, _Source)
-        self._add_objects(machines, _Machine)
+        self._add_models(models, buffers=True)
+        self._add_models(models, buffers=False)
 
 
-    def _add_objects(self, objects:List, object_type):
-        for obj in objects:
-            if obj.name in self.__dict__:
+    def _add_models(self, models:List, buffers:bool):
+
+        for model in models:
+
+            if not isinstance(model, Model):
+                raise 'Not a model'
+
+            if buffers and (not isinstance(model, Buffer)):
+                continue
+            
+            if (not buffers) and isinstance(model, Buffer):
+                continue
+
+            if model.name in self.__dict__:
                 raise ValueError('Duplicated object name.')
-            setattr(self, obj.name, object_type(self.env, obj, self.__dict__))
+
+            setattr(self, model.name, model._model_type()(self.env, model, self.__dict__))
+
 
 
     def plot(self):
@@ -49,6 +57,12 @@ class Line:
                 G.add_edge(obj.name, obj.output_buffer.name)
         
         nx.draw_shell(G, with_labels=True)
+
+
+    @property
+    def report(self) -> str:
+        return ''.join([model.report for model in self.__dict__.values() \
+            if isinstance(model, _Machine) or isinstance(model, _Source)])
 
 
     def simulate(self, time:int) -> None:
