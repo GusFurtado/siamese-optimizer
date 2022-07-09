@@ -3,9 +3,10 @@ from typing import List
 from networkx import nx
 import simpy
 
-from .buffer import Buffer, _Buffer
-from .machine import Machine, _Machine
-from .source import Source, _Source
+from manufacturing_line._reports import LineReport
+from .buffer import Buffer
+from .machine import _Machine
+from .source import _Source
 from .model import Model
 
 
@@ -24,7 +25,7 @@ class Line:
         for model in models:
 
             if not isinstance(model, Model):
-                raise 'Not a model'
+                raise TypeError(f"Can't add objects of type <{type(model)}>. It needs to be a <Model> object.")
 
             if buffers and (not isinstance(model, Buffer)):
                 continue
@@ -61,8 +62,7 @@ class Line:
 
     @property
     def report(self) -> str:
-        return ''.join([model.report for model in self.__dict__.values() \
-            if isinstance(model, _Machine) or isinstance(model, _Source)])
+        return LineReport(self)
 
 
     def simulate(self, time:int) -> None:

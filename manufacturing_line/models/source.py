@@ -5,6 +5,7 @@ from typing import Union
 import simpy
 
 from manufacturing_line import distributions as dist
+from manufacturing_line._reports import SourceReport
 from .model import Model
 
 
@@ -53,10 +54,4 @@ class _Source(Model):
 
     @property
     def report(self) -> str:
-        return f'''
-            {self.name}
-            {'-' * len(self.name)}
-            Model type       :  Source
-            Items created    :  {self.items_created}
-            Time blocked     :  {self.time_blocked}
-        '''
+        return SourceReport(self)

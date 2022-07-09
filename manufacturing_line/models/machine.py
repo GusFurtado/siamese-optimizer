@@ -5,6 +5,7 @@ from typing import Union
 import simpy
 
 from manufacturing_line import distributions as dist
+from manufacturing_line._reports import MachineReport
 from .model import Model
 
 
@@ -64,12 +65,4 @@ class _Machine(Model):
 
     @property
     def report(self) -> str:
-        return f'''
-            {self.name}
-            {'-' * len(self.name)}
-            Model type       :  Machine
-            Items processed  :  {self.items_processed}
-            Time starved     :  {self.time_starved}
-            Time processing  :  {self.time_processing}
-            Time blocked     :  {self.time_blocked}
-        '''
+        return MachineReport(self)
