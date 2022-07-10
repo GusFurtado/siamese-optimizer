@@ -46,6 +46,7 @@ class _Source(Model):
         if isinstance(source.failure, fail.Failure):
             self.tbf = dist._create_spicy_dist(source.failure.time_between_failures)
             self.ttr = dist._create_spicy_dist(source.failure.time_to_repair)
+            self.reset_on_failure = source.failure.reset_process
             env.process(self.process_failure())
 
 
@@ -65,7 +66,8 @@ class _Source(Model):
                     self.time_creating += (self.env.now-creation_start)
                 except simpy.Interrupt:
                     self.time_creating += (self.env.now-creation_start)
-                    creation_time -= (self.env.now-creation_start)
+                    if not self.reset_on_failure:
+                        creation_time -= (self.env.now-creation_start)
                     failure_start = self.env.now
                     yield self.env.timeout(self.ttr.rvs())
                     self.time_broken += (self.env.now-failure_start)
@@ -82,8 +84,6 @@ class _Source(Model):
                     failure_start = self.env.now
                     yield self.env.timeout(self.ttr.rvs())
                     self.time_broken += (self.env.now-failure_start)
-
-
 
 
     def process_failure(self):
