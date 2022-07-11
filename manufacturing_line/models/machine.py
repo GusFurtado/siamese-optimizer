@@ -7,24 +7,25 @@ import simpy
 from manufacturing_line import distributions as dist
 from manufacturing_line import failures as fail
 from manufacturing_line._reports import MachineReport
-from .model import Model
+from .base import Equipment
 
 
 
 @dataclass
-class Machine(Model):
+class Machine(Equipment):
     name : str
     processing_time : Union[dist.Distribution, Number]
     input_buffer : str
     output_buffer : str
     failure : Optional[fail.Failure] = None
 
+    @property
     def _model_type(self):
         return _Machine
 
 
 
-class _Machine(Model):
+class _Machine(Equipment):
 
     def __init__(self, env:simpy.Environment, machine:Machine, objects:dict):
         

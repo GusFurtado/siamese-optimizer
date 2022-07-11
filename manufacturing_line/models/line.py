@@ -7,11 +7,11 @@ from manufacturing_line._reports import LineReport
 from .buffer import Buffer
 from .machine import _Machine
 from .source import _Source
-from .model import Model
+from .base import Equipment, Model
 
 
 
-class Line:
+class Line(Model):
 
     def __init__(self, *models):
 
@@ -27,7 +27,7 @@ class Line:
             if not isinstance(model, Model):
                 raise TypeError(f"Can't add objects of type <{type(model)}>. It needs to be a <Model> object.")
 
-            if buffers and (not isinstance(model, Buffer)):
+            if buffers and isinstance(model, Equipment):
                 continue
             
             if (not buffers) and isinstance(model, Buffer):
@@ -36,7 +36,7 @@ class Line:
             if model.name in self.__dict__:
                 raise ValueError('Duplicated object name.')
 
-            setattr(self, model.name, model._model_type()(self.env, model, self.__dict__))
+            setattr(self, model.name, model._model_type(self.env, model, self.__dict__))
 
 
 

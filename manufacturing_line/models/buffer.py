@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import simpy
 
-from .model import Model
+from .base import Model
 
 
 
@@ -11,6 +11,7 @@ class Buffer(Model):
     name : str
     capacity : int
 
+    @property
     def _model_type(self):
         return _Buffer
 
