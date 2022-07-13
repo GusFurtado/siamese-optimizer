@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from numbers import Number
 import random
-from typing import Union
+from typing import Sequence, Union
 
 
 
@@ -10,6 +10,26 @@ class Distribution(ABC):
     @abstractmethod
     def generate(self):
         pass
+
+
+
+class Beta(Distribution):
+    alpha : Number
+    beta : Number
+    max : Number = 1
+    min : Number = 0
+
+    def generate(self):
+        return (self.max - self.min) \
+            * random.betavariate(self.alpha, self.beta) \
+            + self.min
+
+
+class Choice(Distribution):
+    values: Sequence[Number]
+
+    def generate(self):
+        return random.choice(self.values)
 
 
 
@@ -31,6 +51,15 @@ class Exponential(Distribution):
         return random.expovariate(
             lambd = 1/(self.mean-self.min)
         ) + self.min
+
+
+
+class Gamma(Distribution):
+    alpha : Number
+    beta : Number
+
+    def generate(self):
+        return random.gammavariate(self.alpha, self.beta)
 
 
 
@@ -72,6 +101,15 @@ class Uniform(Distribution):
             a = self.min,
             b = self.max
         )
+
+
+
+class Weibull(Distribution):
+    alpha : Number
+    beta : Number
+
+    def generate(self):
+        return random.weibullvariate(self.alpha, self.beta)
 
 
 
