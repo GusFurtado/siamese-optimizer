@@ -33,7 +33,7 @@ class _Machine(Equipment):
         self.name = machine.name
         self.input_buffer = objects[machine.input_buffer]
         self.output_buffer = objects[machine.output_buffer]
-        self.processing_time = dist._create_spicy_dist(machine.processing_time)
+        self.processing_time = dist._create_dist(machine.processing_time)
 
         # Stats
         self.time_starved = 0
@@ -48,8 +48,8 @@ class _Machine(Equipment):
 
         # Failure
         if isinstance(machine.failure, fail.Failure):
-            self.tbf = dist._create_spicy_dist(machine.failure.time_between_failures)
-            self.ttr = dist._create_spicy_dist(machine.failure.time_to_repair)
+            self.tbf = dist._create_dist(machine.failure.time_between_failures)
+            self.ttr = dist._create_dist(machine.failure.time_to_repair)
             self.reset_on_failure = machine.failure.reset_process
             env.process(self.process_failure())
 
@@ -68,11 +68,11 @@ class _Machine(Equipment):
                 except simpy.Interrupt:
                     self.time_starved += (self.env.now-starving_start)
                     failure_start = self.env.now
-                    yield self.env.timeout(self.ttr.rvs())
+                    yield self.env.timeout(self.ttr.generate())
                     self.time_broken += (self.env.now-failure_start)
 
             # Processing
-            processing_time = self.processing_time.rvs()
+            processing_time = self.processing_time.generate()
             while processing_time:
                 try:
                     processing_start = self.env.now
@@ -85,7 +85,7 @@ class _Machine(Equipment):
                     if not self.reset_on_failure:
                         processing_time -= (self.env.now-processing_start)
                     failure_start = self.env.now
-                    yield self.env.timeout(self.ttr.rvs())
+                    yield self.env.timeout(self.ttr.generate())
                     self.time_broken += (self.env.now-failure_start)
 
             # Blocked
@@ -98,13 +98,13 @@ class _Machine(Equipment):
                 except simpy.Interrupt:
                     self.time_blocked += (self.env.now-blocked_start)
                     failure_start = self.env.now
-                    yield self.env.timeout(self.ttr.rvs())
+                    yield self.env.timeout(self.ttr.generate())
                     self.time_broken += (self.env.now-failure_start)
 
 
     def process_failure(self):
         while True:
-            yield self.env.timeout(self.tbf.rvs())
+            yield self.env.timeout(self.tbf.generate())
             self.process.interrupt()
 
 
