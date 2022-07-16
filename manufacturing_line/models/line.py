@@ -67,3 +67,8 @@ class Line(Model):
 
     def simulate(self, time:int) -> None:
         self.env.run(until=time)
+
+        # Run every model "End" process
+        for equip in self.__dict__.values():
+            if hasattr(equip, '_end_run'):
+                equip._end_run()

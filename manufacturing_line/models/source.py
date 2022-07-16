@@ -41,17 +41,17 @@ class _Source(Equipment):
 
         # Environment
         self.env = env
-        self.process = self.env.process(self.produce())
+        self.process = self.env.process(self._produce())
 
         # Failure
         if isinstance(source.failure, fail.Failure):
             self.tbf = dist._create_dist(source.failure.time_between_failures)
             self.ttr = dist._create_dist(source.failure.time_to_repair)
             self.reset_on_failure = source.failure.reset_process
-            env.process(self.process_failure())
+            env.process(self._process_failure())
 
 
-    def produce(self):
+    def _produce(self):
 
         part = None
         while True:
@@ -87,10 +87,17 @@ class _Source(Equipment):
                     self.time_broken += (self.env.now-failure_start)
 
 
-    def process_failure(self):
+    def _process_failure(self):
         while True:
             yield self.env.timeout(self.tbf.generate())
             self.process.interrupt()
+
+
+    def _end_run(self):
+        try:
+            self.average_creation_time = self.time_creating / self.items_created
+        except ZeroDivisionError:
+            self.average_creation_time = 0
 
 
     @property
