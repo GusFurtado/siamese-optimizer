@@ -7,33 +7,25 @@ import simpy
 from manufacturing_line import distributions as dist
 from manufacturing_line import failures as fail
 from manufacturing_line._reports import MachineReport
-from .base import Equipment
+from .base import Model
 
 
 
 @dataclass
-class Machine(Equipment):
+class Machine(Model):
     name : str
     processing_time : Union[dist.Distribution, Number]
     input_buffer : str
     output_buffer : str
     failure : Optional[fail.Failure] = None
 
-    @property
-    def _model_type(self):
-        return _Machine
 
-
-
-class _Machine(Equipment):
-
-    def __init__(self, env:simpy.Environment, machine:Machine, objects:dict):
+    def _before_run_starts(self, env:simpy.Environment, objects:dict):
         
         # Properties
-        self.name = machine.name
-        self.input_buffer = objects[machine.input_buffer]
-        self.output_buffer = objects[machine.output_buffer]
-        self.processing_time = dist._create_dist(machine.processing_time)
+        self.input_buffer = objects[self.input_buffer]
+        self.output_buffer = objects[self.output_buffer]
+        self.processing_time = dist._create_dist(self.processing_time)
 
         # Stats
         self.time_starved = 0
@@ -44,17 +36,17 @@ class _Machine(Equipment):
         
         # Environment
         self.env = env
-        self.process = self.env.process(self._produce())
+        self.process = self.env.process(self._run_process())
 
         # Failure
-        if isinstance(machine.failure, fail.Failure):
-            self.tbf = dist._create_dist(machine.failure.time_between_failures)
-            self.ttr = dist._create_dist(machine.failure.time_to_repair)
-            self.reset_on_failure = machine.failure.reset_process
-            env.process(self._process_failure())
+        if isinstance(self.failure, fail.Failure):
+            self.tbf = dist._create_dist(self.failure.time_between_failures)
+            self.ttr = dist._create_dist(self.failure.time_to_repair)
+            self.reset_on_failure = self.failure.reset_process
+            env.process(self._run_failure())
 
 
-    def _produce(self):
+    def _run_process(self):
 
         part = None
         while True:
@@ -63,7 +55,7 @@ class _Machine(Equipment):
             while not part:
                 try:
                     starving_start = self.env.now
-                    part = yield self.input_buffer.buffer.get()
+                    part = yield self.input_buffer._buffer.get()
                     self.time_starved += (self.env.now-starving_start)
                 except simpy.Interrupt:
                     self.time_starved += (self.env.now-starving_start)
@@ -92,7 +84,7 @@ class _Machine(Equipment):
             while part:
                 try:
                     blocked_start = self.env.now
-                    yield self.output_buffer.buffer.put(part)
+                    yield self.output_buffer._buffer.put(part)
                     part = None
                     self.time_blocked += (self.env.now-blocked_start)
                 except simpy.Interrupt:
@@ -102,13 +94,13 @@ class _Machine(Equipment):
                     self.time_broken += (self.env.now-failure_start)
 
 
-    def _process_failure(self):
+    def _run_failure(self):
         while True:
             yield self.env.timeout(self.tbf.generate())
             self.process.interrupt()
 
 
-    def _end_run(self):
+    def _after_run_ends(self):
         try:
             self.average_processing_time = self.time_processing / self.items_processed
         except ZeroDivisionError:

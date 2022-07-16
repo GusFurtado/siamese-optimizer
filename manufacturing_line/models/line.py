@@ -4,40 +4,30 @@ from networkx import nx
 import simpy
 
 from manufacturing_line._reports import LineReport
-from .buffer import Buffer
-from .machine import _Machine
-from .source import _Source
-from .base import Equipment, Model
+from .base import Model
+from .machine import Machine
+from .source import Source
 
 
 
-class Line(Model):
+class Line:
 
     def __init__(self, *models):
 
         self.env = simpy.Environment()
-        self._add_models(models, buffers=True)
-        self._add_models(models, buffers=False)
-
-
-    def _add_models(self, models:List, buffers:bool):
-
         for model in models:
+            self.add_models(model)
 
-            if not isinstance(model, Model):
-                raise TypeError(f"Can't add objects of type <{type(model)}>. It needs to be a <Model> object.")
 
-            if buffers and isinstance(model, Equipment):
-                continue
-            
-            if (not buffers) and isinstance(model, Buffer):
-                continue
+    def add_models(self, model:Model):
 
-            if model.name in self.__dict__:
-                raise ValueError('Duplicated object name.')
+        if not isinstance(model, Model):
+            raise TypeError(f"Can't add objects of type <{type(model)}>. It needs to be a <Model> object.")
 
-            setattr(self, model.name, model._model_type(self.env, model, self.__dict__))
+        if model.name in self.__dict__:
+            raise ValueError('Duplicated object name.')
 
+        setattr(self, model.name, model)
 
 
     def plot(self):
@@ -50,10 +40,10 @@ class Line(Model):
 
         for obj_name in self.__dict__:
             obj = self.__dict__[obj_name]
-            if isinstance(obj, _Source):
+            if isinstance(obj, Source):
                 G.add_edge(obj.name, obj.output_buffer.name)
 
-            elif isinstance(obj, _Machine):
+            elif isinstance(obj, Machine):
                 G.add_edge(obj.input_buffer.name, obj.name)
                 G.add_edge(obj.name, obj.output_buffer.name)
         
@@ -66,9 +56,13 @@ class Line(Model):
 
 
     def simulate(self, time:int) -> None:
+
+        for model in self.__dict__.values():
+            if hasattr(model, '_before_run_starts'):
+                model._before_run_starts(self.env, self.__dict__)
+
         self.env.run(until=time)
 
-        # Run every model "End" process
-        for equip in self.__dict__.values():
-            if hasattr(equip, '_end_run'):
-                equip._end_run()
+        for model in self.__dict__.values():
+            if hasattr(model, '_after_run_ends'):
+                model._after_run_ends()

@@ -7,31 +7,23 @@ import simpy
 from manufacturing_line import distributions as dist
 from manufacturing_line import failures as fail
 from manufacturing_line._reports import SourceReport
-from .base import Equipment
+from .base import Model
 
 
 
 @dataclass
-class Source(Equipment):
+class Source(Model):
     name : str
     creation_time : Union[dist.Distribution, Number]
     output_buffer : str
     failure : Optional[fail.Failure] = None
 
-    @property
-    def _model_type(self):
-        return _Source
 
-
-
-class _Source(Equipment):
-
-    def __init__(self, env:simpy.Environment, source:Source, objects:dict):
+    def _before_run_starts(self, env:simpy.Environment, objects:dict):
         
         # Properties
-        self.name = source.name
-        self.output_buffer = objects[source.output_buffer]
-        self.creation_time = dist._create_dist(source.creation_time)
+        self.output_buffer = objects[self.output_buffer]
+        self.creation_time = dist._create_dist(self.creation_time)
 
         # Stats
         self.items_created = 0
@@ -41,17 +33,17 @@ class _Source(Equipment):
 
         # Environment
         self.env = env
-        self.process = self.env.process(self._produce())
+        self.process = self.env.process(self._run_process())
 
         # Failure
-        if isinstance(source.failure, fail.Failure):
-            self.tbf = dist._create_dist(source.failure.time_between_failures)
-            self.ttr = dist._create_dist(source.failure.time_to_repair)
-            self.reset_on_failure = source.failure.reset_process
-            env.process(self._process_failure())
+        if isinstance(self.failure, fail.Failure):
+            self.tbf = dist._create_dist(self.failure.time_between_failures)
+            self.ttr = dist._create_dist(self.failure.time_to_repair)
+            self.reset_on_failure = self.failure.reset_process
+            env.process(self._run_failure())
 
 
-    def _produce(self):
+    def _run_process(self):
 
         part = None
         while True:
@@ -77,7 +69,7 @@ class _Source(Equipment):
             while part:
                 try:
                     blocked_start = self.env.now
-                    yield self.output_buffer.buffer.put(part)
+                    yield self.output_buffer._buffer.put(part)
                     part = None
                     self.time_blocked += (self.env.now-blocked_start)
                 except simpy.Interrupt:
@@ -87,13 +79,13 @@ class _Source(Equipment):
                     self.time_broken += (self.env.now-failure_start)
 
 
-    def _process_failure(self):
+    def _run_failure(self):
         while True:
             yield self.env.timeout(self.tbf.generate())
             self.process.interrupt()
 
 
-    def _end_run(self):
+    def _after_run_ends(self):
         try:
             self.average_creation_time = self.time_creating / self.items_created
         except ZeroDivisionError:

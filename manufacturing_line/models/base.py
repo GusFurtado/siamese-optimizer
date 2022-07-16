@@ -1,13 +1,16 @@
 """Submodule for base models."""
 
+from abc import ABC, abstractmethod
 
 
-class Model:
+
+class Model(ABC):
     """Base model type."""
-    pass
+    
+    @abstractmethod
+    def _before_run_starts(self):
+        pass
 
-
-
-class Equipment(Model):
-    """An physical asset the transforms a production unit."""
-    pass
+    @abstractmethod
+    def _after_run_ends(self):
+        pass

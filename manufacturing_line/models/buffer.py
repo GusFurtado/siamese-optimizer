@@ -11,19 +11,13 @@ class Buffer(Model):
     name : str
     capacity : int
 
-    @property
-    def _model_type(self):
-        return _Buffer
-
-
-
-class _Buffer(Model):
-
-    def __init__(self, env:simpy.Environment, buffer:Buffer, _):
+    def _before_run_starts(self, env:simpy.Environment, _):
         self.env = env
-        self.name = buffer.name
-        self.buffer = simpy.Store(env, buffer.capacity)
+        self._buffer = simpy.Store(env, self.capacity)
+
+    def _after_run_ends(self):
+        pass
 
     @property
     def content(self):
-        return len(self.buffer.items)
+        return len(self._buffer.items)
