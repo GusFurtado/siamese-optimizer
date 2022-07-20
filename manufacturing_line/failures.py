@@ -22,4 +22,3 @@ class CountFailure(Failure):
 class TimeFailure(Failure):
     time_between_failures : Union[Distribution, Number]
     time_to_repair : Union[Distribution, Number]
-    reset_process : bool = False

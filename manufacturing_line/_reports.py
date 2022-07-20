@@ -86,7 +86,7 @@ class SourceReport(Report):
     source : object
 
     def __post_init__(self):
-        self.total = self.source.time_creating \
+        self.total = self.source.time_processing \
             + self.source.time_blocked \
             + self.source.time_broken
 
@@ -94,11 +94,11 @@ class SourceReport(Report):
         return f'''
         {self.source.name} report
         {'-' * (len(self.source.name)+7)}
-        Model type     :  Source
-        Items created  :  {self.source.items_created}
-        Time creating  :  {self.source.time_creating:,.2f} ({self.source.time_creating/self.total:.2%})
-        Time blocked   :  {self.source.time_blocked:,.2f} ({self.source.time_blocked/self.total:.2%})
-        Time broken    :  {self.source.time_broken:,.2f} ({self.source.time_broken/self.total:.2%})
+        Model type       :  Source
+        Items processed  :  {self.source.items_processed}
+        Time processing  :  {self.source.time_processing:,.2f} ({self.source.time_processing/self.total:.2%})
+        Time blocked     :  {self.source.time_blocked:,.2f} ({self.source.time_blocked/self.total:.2%})
+        Time broken      :  {self.source.time_broken:,.2f} ({self.source.time_broken/self.total:.2%})
         '''
 
     def _repr_html_(self):
@@ -113,14 +113,14 @@ class SourceReport(Report):
                     <td></td>
                 </tr>
                 <tr>
-                    <td>Items created</td>
-                    <td>{self.source.items_created}</td>
+                    <td>Items processed</td>
+                    <td>{self.source.items_processed}</td>
                     <td></td>
                 </tr>
                 <tr>
-                    <td>Time blocked</td>
-                    <td>{self.source.time_creating:,.2f}</td>
-                    <td>{self.source.time_creating/self.total:.2%}</td>
+                    <td>Time processing</td>
+                    <td>{self.source.time_processing:,.2f}</td>
+                    <td>{self.source.time_processing/self.total:.2%}</td>
                 </tr>
                 <tr>
                     <td>Time blocked</td>
@@ -145,8 +145,8 @@ class LineReport(Report):
         self._equips = [equip for equip in self.line.__dict__.values() \
             if hasattr(equip, 'report')]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return ''.join([equip.report.__str__() for equip in self._equips])
 
-    def _repr_html_(self):
+    def _repr_html_(self) -> str:
         return '<br>'.join([equip.report._repr_html_() for equip in self._equips])

@@ -11,11 +11,11 @@ class Buffer(Model):
     name : str
     capacity : int
 
-    def _before_run_starts(self, env:simpy.Environment, _):
+    def _before_run(self, env:simpy.Environment, _):
         self.env = env
         self._buffer = simpy.Store(env, self.capacity)
 
-    def _after_run_ends(self):
+    def _after_run(self):
         pass
 
     @property

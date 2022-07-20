@@ -8,9 +8,9 @@ class Model(ABC):
     """Base model type."""
     
     @abstractmethod
-    def _before_run_starts(self):
+    def _before_run(self):
         pass
 
     @abstractmethod
-    def _after_run_ends(self):
+    def _after_run(self):
         pass

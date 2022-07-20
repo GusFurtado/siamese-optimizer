@@ -58,11 +58,11 @@ class Line:
     def simulate(self, time:int) -> None:
 
         for model in self.__dict__.values():
-            if hasattr(model, '_before_run_starts'):
-                model._before_run_starts(self.env, self.__dict__)
+            if hasattr(model, '_before_run'):
+                model._before_run(self.env, self.__dict__)
 
         self.env.run(until=time)
 
         for model in self.__dict__.values():
-            if hasattr(model, '_after_run_ends'):
-                model._after_run_ends()
+            if hasattr(model, '_after_run'):
+                model._after_run()

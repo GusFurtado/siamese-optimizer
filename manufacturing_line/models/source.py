@@ -6,6 +6,7 @@ import simpy
 
 from manufacturing_line import distributions as dist
 from manufacturing_line import failures as fail
+from manufacturing_line.status import Status
 from manufacturing_line._reports import SourceReport
 from .base import Model
 
@@ -14,22 +15,30 @@ from .base import Model
 @dataclass
 class Source(Model):
     name : str
-    creation_time : Union[dist.Distribution, Number]
+    processing_time : Union[dist.Distribution, Number]
     output_buffer : str
     failure : Optional[fail.Failure] = None
 
 
-    def _before_run_starts(self, env:simpy.Environment, objects:dict):
+    def _before_run(self, env:simpy.Environment, objects:dict):
         
         # Properties
-        self.output_buffer = objects[self.output_buffer]
-        self.creation_time = dist._create_dist(self.creation_time)
+        self._output_buffer = objects[self.output_buffer]
+        self.processing_time = dist._create_dist(self.processing_time)
 
-        # Stats
-        self.items_created = 0
+        # Tracking Stats
         self.time_blocked = 0
         self.time_broken = 0
-        self.time_creating = 0
+        self.time_processing = 0
+
+        # Micromanagement stats
+        self.process_stats = 0
+        self.processing_start_time = 0
+        self.blocking_start_time = 0
+        self.failure_start_time = 0
+        self.status = Status.PROCESSING
+        self.process_stats = []
+        self.part = None
 
         # Environment
         self.env = env
@@ -39,44 +48,30 @@ class Source(Model):
         if isinstance(self.failure, fail.Failure):
             self.tbf = dist._create_dist(self.failure.time_between_failures)
             self.ttr = dist._create_dist(self.failure.time_to_repair)
-            self.reset_on_failure = self.failure.reset_process
             env.process(self._run_failure())
 
 
     def _run_process(self):
-
-        part = None
         while True:
-            
-            # Creating
-            creation_time = self.creation_time.generate()
-            while not part:
-                try:
-                    creation_start = self.env.now
-                    yield self.env.timeout(creation_time)
-                    part = 1
-                    self.items_created += 1
-                    self.time_creating += (self.env.now-creation_start)
-                except simpy.Interrupt:
-                    self.time_creating += (self.env.now-creation_start)
-                    if not self.reset_on_failure:
-                        creation_time -= (self.env.now-creation_start)
-                    failure_start = self.env.now
-                    yield self.env.timeout(self.ttr.generate())
-                    self.time_broken += (self.env.now-failure_start)
+            try:
 
-            # Blocked
-            while part:
-                try:
-                    blocked_start = self.env.now
-                    yield self.output_buffer._buffer.put(part)
-                    part = None
-                    self.time_blocked += (self.env.now-blocked_start)
-                except simpy.Interrupt:
-                    self.time_blocked += (self.env.now-blocked_start)
-                    failure_start = self.env.now
-                    yield self.env.timeout(self.ttr.generate())
-                    self.time_broken += (self.env.now-failure_start)
+                # Processing
+                if self.status == Status.PROCESSING:
+                    self._before_processing()
+                    yield self.env.timeout(self.processing_time.generate())
+                    self._after_processing()
+
+                # Blocked
+                elif self.status == Status.BLOCKED:
+                    self._before_blocking()
+                    yield self._output_buffer._buffer.put(self.part)
+                    self._after_blocking()
+
+            # Failure
+            except simpy.Interrupt:
+                self._before_failing()
+                yield self.env.timeout(self.ttr.generate())
+                self._after_failing()
 
 
     def _run_failure(self):
@@ -85,11 +80,59 @@ class Source(Model):
             self.process.interrupt()
 
 
-    def _after_run_ends(self):
+    def _before_processing(self):
+        self.processing_start_time = self.env.now
+        
+
+    def _after_processing(self):
+        self.part = 1
+        process_duration = self.env.now - self.processing_start_time
+        self.time_processing += process_duration
+        self.process_stats.append(process_duration)
+        self.status = Status.BLOCKED
+
+
+    def _before_blocking(self):
+        self.blocking_start_time = self.env.now
+        
+
+    def _after_blocking(self):
+        self.part = None
+        self.time_blocked += (self.env.now-self.blocking_start_time)
+        self.status = Status.PROCESSING
+
+
+    def _before_failing(self):
+        self.failure_start_time = self.env.now
+        self._add_current_status()
+
+
+    def _after_failing(self):
+        self.time_broken += (self.env.now-self.failure_start_time)
+
+
+    def _after_run(self):
+        self.items_processed = len(self.process_stats)
+        self._add_current_status()
+
         try:
-            self.average_creation_time = self.time_creating / self.items_created
+            self.average_processing_time = self.time_processing / self.items_processed
         except ZeroDivisionError:
-            self.average_creation_time = 0
+            self.average_processing_time = 0
+
+        # Clear micromanagement stats
+        del self.part
+        del self.process_stats
+        del self.processing_start_time
+        del self.blocking_start_time
+        del self.failure_start_time
+
+
+    def _add_current_status(self):
+        if self.status == Status.PROCESSING:
+            self.time_processing += (self.env.now-self.processing_start_time)
+        elif self.status == Status.BLOCKED:
+            self.time_broken += (self.env.now-self.blocking_start_time)
 
 
     @property

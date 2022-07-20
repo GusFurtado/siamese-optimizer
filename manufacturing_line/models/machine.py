@@ -6,6 +6,7 @@ import simpy
 
 from manufacturing_line import distributions as dist
 from manufacturing_line import failures as fail
+from manufacturing_line.status import Status
 from manufacturing_line._reports import MachineReport
 from .base import Model
 
@@ -20,11 +21,11 @@ class Machine(Model):
     failure : Optional[fail.Failure] = None
 
 
-    def _before_run_starts(self, env:simpy.Environment, objects:dict):
+    def _before_run(self, env:simpy.Environment, objects:dict):
         
         # Properties
-        self.input_buffer = objects[self.input_buffer]
-        self.output_buffer = objects[self.output_buffer]
+        self._input_buffer = objects[self.input_buffer]
+        self._output_buffer = objects[self.output_buffer]
         self.processing_time = dist._create_dist(self.processing_time)
 
         # Stats
@@ -32,7 +33,16 @@ class Machine(Model):
         self.time_processing = 0
         self.time_blocked = 0
         self.time_broken = 0
-        self.items_processed = 0
+
+        # Micromanagement stats
+        self.process_stats = 0
+        self.starving_start_time = 0
+        self.processing_start_time = 0
+        self.blocking_start_time = 0
+        self.failure_start_time = 0
+        self.process_stats = []
+        self.status = Status.STARVING
+        self.part = None
         
         # Environment
         self.env = env
@@ -42,56 +52,36 @@ class Machine(Model):
         if isinstance(self.failure, fail.Failure):
             self.tbf = dist._create_dist(self.failure.time_between_failures)
             self.ttr = dist._create_dist(self.failure.time_to_repair)
-            self.reset_on_failure = self.failure.reset_process
             env.process(self._run_failure())
 
 
     def _run_process(self):
-
-        part = None
         while True:
+            try:
 
-            # Starving
-            while not part:
-                try:
-                    starving_start = self.env.now
-                    part = yield self.input_buffer._buffer.get()
-                    self.time_starved += (self.env.now-starving_start)
-                except simpy.Interrupt:
-                    self.time_starved += (self.env.now-starving_start)
-                    failure_start = self.env.now
-                    yield self.env.timeout(self.ttr.generate())
-                    self.time_broken += (self.env.now-failure_start)
+                # Starving
+                if self.status == Status.STARVING:
+                    self._before_starving()
+                    self.part = yield self._input_buffer._buffer.get()
+                    self._after_starving()
 
-            # Processing
-            processing_time = self.processing_time.generate()
-            while processing_time:
-                try:
-                    processing_start = self.env.now
-                    yield self.env.timeout(processing_time)
-                    self.items_processed += 1
-                    self.time_processing += (self.env.now-processing_start)
-                    processing_time = 0
-                except simpy.Interrupt:
-                    self.time_processing += (self.env.now-processing_start)
-                    if not self.reset_on_failure:
-                        processing_time -= (self.env.now-processing_start)
-                    failure_start = self.env.now
-                    yield self.env.timeout(self.ttr.generate())
-                    self.time_broken += (self.env.now-failure_start)
+                # Processing
+                elif self.status == Status.PROCESSING:
+                    self._before_processing()
+                    yield self.env.timeout(self.processing_time.generate())
+                    self._after_processing()
 
-            # Blocked
-            while part:
-                try:
-                    blocked_start = self.env.now
-                    yield self.output_buffer._buffer.put(part)
-                    part = None
-                    self.time_blocked += (self.env.now-blocked_start)
-                except simpy.Interrupt:
-                    self.time_blocked += (self.env.now-blocked_start)
-                    failure_start = self.env.now
-                    yield self.env.timeout(self.ttr.generate())
-                    self.time_broken += (self.env.now-failure_start)
+                # Block
+                elif self.status == Status.BLOCKED:
+                    self._before_blocking()
+                    yield self._output_buffer._buffer.put(self.part)
+                    self._after_blocking()
+
+            # Failure
+            except simpy.Interrupt:
+                self._before_failing()
+                yield self.env.timeout(self.ttr.generate())
+                self._after_failing()
 
 
     def _run_failure(self):
@@ -100,11 +90,69 @@ class Machine(Model):
             self.process.interrupt()
 
 
-    def _after_run_ends(self):
+    def _before_starving(self):
+        self.starving_start_time = self.env.now
+
+
+    def _after_starving(self):
+        self.time_starved += (self.env.now-self.starving_start_time)
+        self.status = Status.PROCESSING
+
+
+    def _before_processing(self):
+        self.processing_start_time = self.env.now
+
+
+    def _after_processing(self):
+        process_duration = self.env.now-self.processing_start_time
+        self.process_stats.append(process_duration)
+        self.time_processing += (process_duration)
+        self.status = Status.BLOCKED
+
+
+    def _before_blocking(self):
+        self.blocking_start_time = self.env.now
+
+
+    def _after_blocking(self):
+        self.part = None
+        self.time_blocked += (self.env.now-self.blocking_start_time)
+        self.status = Status.STARVING
+
+
+    def _before_failing(self):
+        self.failure_start_time = self.env.now
+        self._add_current_status()
+
+
+    def _after_failing(self):
+        self.time_broken += (self.env.now-self.failure_start_time)
+
+
+    def _after_run(self):
+        self.items_processed = len(self.process_stats)
+        self._add_current_status()
+
         try:
             self.average_processing_time = self.time_processing / self.items_processed
         except ZeroDivisionError:
             self.average_processing_time = 0
+
+        # Clear micromanagement stats
+        del self.process_stats
+        del self.starving_start_time
+        del self.processing_start_time
+        del self.blocking_start_time
+        del self.failure_start_time
+
+
+    def _add_current_status(self):
+        if self.status == Status.STARVING:
+            self.time_starved += (self.env.now-self.starving_start_time)
+        elif self.status == Status.PROCESSING:
+            self.time_processing += (self.env.now-self.processing_start_time)
+        elif self.status == Status.BLOCKED:
+            self.time_broken += (self.env.now-self.blocking_start_time)
 
 
     @property
