@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from networkx import nx
 import simpy
@@ -30,24 +30,48 @@ class Line:
         setattr(self, model.name, model)
 
 
-    def plot(self):
+    def plot(self, seed:Optional[int]=None):
 
+        D = {k:i for i, k in enumerate(self.__dict__)}
         G = nx.DiGraph()
 
+        # Add models
         for obj_name in self.__dict__:
             if obj_name != 'env':
-                G.add_node(obj_name)
+                G.add_node(D[obj_name])
 
+        # Connect models
         for obj_name in self.__dict__:
             obj = self.__dict__[obj_name]
             if isinstance(obj, Source):
-                G.add_edge(obj.name, obj.output_buffer.name)
+                G.add_edge(D[obj.name], D[obj.output_buffer])
 
             elif isinstance(obj, Machine):
-                G.add_edge(obj.input_buffer.name, obj.name)
-                G.add_edge(obj.name, obj.output_buffer.name)
+                G.add_edge(D[obj.input_buffer], D[obj.name])
+                G.add_edge(D[obj.name], D[obj.output_buffer])
         
-        nx.draw_shell(G, with_labels=True)
+        # Set models positions
+        pos = nx.spring_layout(G, seed=seed)
+
+        # Show legend
+        legend_title = ['Legend', '------']
+        for d in D:
+            if isinstance(self.__dict__[d], Model):
+                legend_title.append(f'({D[d]}) {d}')
+        print('\n'.join(legend_title))
+
+        # Draw
+        return nx.draw(
+            G = G,
+            pos = pos,
+            with_labels = True,
+            font_size = 24,
+            node_size = 2000,
+            node_color = 'white',
+            edgecolors = 'black',
+            linewidths = 5,
+            width = 5
+        )
 
 
     @property
