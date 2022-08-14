@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from ._stats import Stats
+
 
 
 class Report(ABC):
@@ -23,10 +25,16 @@ class MachineReport(Report):
     machine : object
 
     def __post_init__(self):
+
         self.total = self.machine.time_starved \
             + self.machine.time_processing \
             + self.machine.time_blocked \
             + self.machine.time_broken
+
+        self.time_starved    = Stats(self.machine._starving_tracking)
+        self.time_processing = Stats(self.machine._processing_tracking)
+        self.time_blocked    = Stats(self.machine._blocking_tracking)
+        self.time_broken     = Stats(self.machine._failure_tracking)
 
     def __str__(self):
         return f'''
