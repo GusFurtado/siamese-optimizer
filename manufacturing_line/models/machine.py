@@ -8,6 +8,7 @@ from manufacturing_line import distributions as dist
 from manufacturing_line import failures as fail
 from manufacturing_line.status import Status
 from manufacturing_line._reports import MachineReport
+from manufacturing_line._stats import Stats
 from .base import Model
 
 
@@ -144,6 +145,24 @@ class Machine(Model):
     def _after_run(self):
         self.items_processed = len(self._processing_tracking)
         self._add_current_status()
+
+        # Generate `Stats` objects
+        self.time_starved = Stats(
+            total = self.time_starved,
+            values = self._starving_tracking
+        )
+        self.time_processing = Stats(
+            total = self.time_processing,
+            values = self._processing_tracking
+        )
+        self.time_blocked = Stats(
+            total = self.time_blocked,
+            values = self._blocking_tracking
+        )
+        self.time_broken = Stats(
+            total = self.time_broken,
+            values = self._failure_tracking
+        )
 
         # Clear micromanagement stats
         del self.starving_start_time
