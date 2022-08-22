@@ -98,6 +98,10 @@ class SourceReport(Report):
             + self.source.time_blocked \
             + self.source.time_broken
 
+        self.time_processing = Stats(self.source._processing_tracking)
+        self.time_blocked    = Stats(self.source._blocking_tracking)
+        self.time_broken     = Stats(self.source._failure_tracking)
+
     def __str__(self):
         return f'''
         {self.source.name} report

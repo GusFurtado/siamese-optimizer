@@ -27,17 +27,21 @@ class Source(Model):
         self.processing_time = dist._create_dist(self.processing_time)
 
         # Tracking Stats
-        self.time_blocked = 0
-        self.time_broken = 0
+        self.time_blocked    = 0
+        self.time_broken     = 0
         self.time_processing = 0
 
         # Micromanagement stats
-        self.process_stats = 0
         self.processing_start_time = 0
-        self.blocking_start_time = 0
-        self.failure_start_time = 0
+        self.blocking_start_time   = 0
+        self.failure_start_time    = 0
+
+        self._starving_tracking   = []
+        self._processing_tracking = []
+        self._blocking_tracking   = []
+        self._failure_tracking    = []
+
         self.status = Status.PROCESSING
-        self.process_stats = []
         self.part = None
 
         # Environment
@@ -85,10 +89,10 @@ class Source(Model):
         
 
     def _after_processing(self):
-        self.part = 1
-        process_duration = self.env.now - self.processing_start_time
+        process_duration = self.env.now-self.processing_start_time
         self.time_processing += process_duration
-        self.process_stats.append(process_duration)
+        self._processing_tracking.append(process_duration)
+        self.part = 1
         self.status = Status.BLOCKED
 
 
@@ -97,8 +101,11 @@ class Source(Model):
         
 
     def _after_blocking(self):
+        blocking_duration = self.env.now-self.blocking_start_time
+        if blocking_duration > 0:
+            self._blocking_tracking.append(blocking_duration)
+            self.time_blocked += blocking_duration
         self.part = None
-        self.time_blocked += (self.env.now-self.blocking_start_time)
         self.status = Status.PROCESSING
 
 
@@ -108,21 +115,17 @@ class Source(Model):
 
 
     def _after_failing(self):
-        self.time_broken += (self.env.now-self.failure_start_time)
+        failure_duration = self.env.now-self.failure_start_time
+        self._failure_tracking.append(failure_duration)
+        self.time_broken += failure_duration
 
 
     def _after_run(self):
-        self.items_processed = len(self.process_stats)
+        self.items_processed = len(self._processing_tracking)
         self._add_current_status()
-
-        try:
-            self.average_processing_time = self.time_processing / self.items_processed
-        except ZeroDivisionError:
-            self.average_processing_time = 0
 
         # Clear micromanagement stats
         del self.part
-        del self.process_stats
         del self.processing_start_time
         del self.blocking_start_time
         del self.failure_start_time

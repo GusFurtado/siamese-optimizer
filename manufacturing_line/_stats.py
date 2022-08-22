@@ -6,18 +6,22 @@ import plotly.graph_objects as go
 
 
 class Stats(list):
-    
+
+    @property
+    def len(self) -> int:
+        return len(self)
+
     @property
     def max(self) -> Number:
         return max(self)
 
     @property
-    def min(self) -> Number:
-        return min(self)
+    def mean(self) -> Number:
+        return np.mean(list(self))
 
     @property
-    def len(self) -> int:
-        return len(self)
+    def min(self) -> Number:
+        return min(self)
 
     def percentile(self, p:float, **kwargs) -> Number:
         return np.percentile(self, p, **kwargs)

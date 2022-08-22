@@ -102,7 +102,7 @@ class Machine(Model):
         starving_duration = self.env.now-self.starving_start_time
         if starving_duration > 0:
             self._starving_tracking.append(starving_duration)
-            self.time_starved += (starving_duration)
+            self.time_starved += starving_duration
         self.status = Status.PROCESSING
 
 
@@ -113,7 +113,7 @@ class Machine(Model):
     def _after_processing(self):
         process_duration = self.env.now-self.processing_start_time
         self._processing_tracking.append(process_duration)
-        self.time_processing += (process_duration)
+        self.time_processing += process_duration
         self.status = Status.BLOCKED
 
 
@@ -125,7 +125,7 @@ class Machine(Model):
         blocking_duration = self.env.now-self.blocking_start_time
         if blocking_duration > 0:
             self._blocking_tracking.append(blocking_duration)
-            self.time_blocked += (blocking_duration)
+            self.time_blocked += blocking_duration
         self.part = None
         self.status = Status.STARVING
 
@@ -138,17 +138,12 @@ class Machine(Model):
     def _after_failing(self):
         failure_duration = self.env.now-self.failure_start_time
         self._failure_tracking.append(failure_duration)
-        self.time_broken += (failure_duration)
+        self.time_broken += failure_duration
 
 
     def _after_run(self):
         self.items_processed = len(self._processing_tracking)
         self._add_current_status()
-
-        try:
-            self.average_processing_time = self.time_processing / self.items_processed
-        except ZeroDivisionError:
-            self.average_processing_time = 0
 
         # Clear micromanagement stats
         del self.starving_start_time
