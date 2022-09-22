@@ -1,3 +1,10 @@
+"""The `Stats` class submodule.
+
+The `Stats` class holds the values generated through the simulation and can be
+accessed through the object's properties.
+
+"""
+
 from dataclasses import dataclass
 from numbers import Number
 
@@ -8,6 +15,10 @@ import plotly.graph_objects as go
 
 @dataclass
 class Stats:
+    """The `Stats` class holds the values generated through the simulation.
+    
+    """
+
     total : Number
     values : list
 

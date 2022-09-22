@@ -1,8 +1,20 @@
+"""The reports submodule.
+
+This submodule contains each model report, including:
+- MachineReport
+- SourceReport
+- LineReport
+
+These reports are loaded after the simulation run.
+
+"""
+
 from abc import ABC, abstractmethod
 
 
 
 class Report(ABC):
+    """Abstract base class of a simulation report."""
 
     @abstractmethod
     def __str__(self):
