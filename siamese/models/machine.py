@@ -112,12 +112,15 @@ class Machine(Model):
                 self._before_failing()
                 yield self.env.timeout(self.ttr.generate())
                 self._after_failing()
+                self.fixed.succeed()
 
 
     def _run_failure(self):
         while True:
             yield self.env.timeout(self.tbf.generate())
             self.process.interrupt()
+            self.fixed = self.env.event()
+            yield self.fixed
 
 
     def _before_starving(self):
