@@ -18,6 +18,7 @@ class Distribution(ABC):
 
 
 
+@dataclass
 class Beta(Distribution):
     """Generate a value based on a beta distribution.
 
@@ -65,6 +66,8 @@ class Beta(Distribution):
             + self.min
 
 
+
+@dataclass
 class Choice(Distribution):
     """Randomly picks a value from a list of values.
 
@@ -143,6 +146,7 @@ class Exponential(Distribution):
 
 
 
+@dataclass
 class Gamma(Distribution):
     """Generate a value based on a gamma distribution.
 
@@ -295,6 +299,7 @@ class Uniform(Distribution):
 
 
 
+@dataclass
 class Weibull(Distribution):
     """Generate a value based on a Weibull distribution.
 
