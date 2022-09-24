@@ -1,9 +1,20 @@
-from typing import List, Optional
+"""The submodule that defines the `Line` object.
+
+`Line` is a wrapper for `Model` objects that represents a production line.
+
+The `Model` objects are:
+- `Source`
+- `Machine`
+- `Buffer`
+
+"""
+
+from typing import Optional
 
 from networkx import nx
 import simpy
 
-from manufacturing_line._reports import LineReport
+from siamese._reports import LineReport
 from .base import Model
 from .machine import Machine
 from .source import Source
@@ -11,15 +22,53 @@ from .source import Source
 
 
 class Line:
+    """Object that represents a production line.
 
+    Through this object's methods, you can plot and simulate the line.
+
+    It wraps `Model` objects, which are:
+    - `Source`
+    - `Machine`
+    - `Buffer`
+
+    Parameters
+    ----------
+    *models : Model
+        Objects that make up the line.
+
+    Methods
+    -------
+    add_model(model:Model)
+        Add another `Model` object to the line.
+    plot(seed=None)
+        Draw a network of the `Model` objects connection.
+    simulate(time)
+        Run the simulation.
+
+    Properties
+    ----------
+    report : LineReport
+        Results of the simulation.
+
+    """
+
+    
     def __init__(self, *models):
 
         self.env = simpy.Environment()
         for model in models:
-            self.add_models(model)
+            self.add_model(model)
 
 
-    def add_models(self, model:Model):
+    def add_model(self, model:Model) -> None:
+        """Add another `Model` object to the line.
+        
+        Parameters
+        ----------
+        model : Model
+            New object to be added to the line.
+        
+        """
 
         if not isinstance(model, Model):
             raise TypeError(f"Can't add objects of type <{type(model)}>. It needs to be a <Model> object.")
@@ -31,6 +80,14 @@ class Line:
 
 
     def plot(self, seed:Optional[int]=None):
+        """Draw a network of the `Model` objects connection.
+
+        Parameters
+        ----------
+        seed : int, optional
+            Random state for deterministic node layouts.
+
+        """
 
         D = {k:i for i, k in enumerate(self.__dict__)}
         G = nx.DiGraph()
@@ -76,10 +133,19 @@ class Line:
 
     @property
     def report(self) -> str:
+        """Results of the simulation."""
         return LineReport(self)
 
 
     def simulate(self, time:int) -> None:
+        """Run the simulation.
+
+        Parameters
+        ----------
+        time : int
+            Run the simulation until given time.
+        
+        """
 
         for model in self.__dict__.values():
             if hasattr(model, '_before_run'):
