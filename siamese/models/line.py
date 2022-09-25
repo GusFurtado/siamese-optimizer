@@ -11,13 +11,19 @@ The `Model` objects are:
 
 from typing import Optional
 
-from networkx import nx
 import simpy
 
 from siamese._reports import LineReport
 from .base import Model
 from .machine import Machine
 from .source import Source
+
+try:
+    # Older versions of networkx
+    from networkx import nx
+except ImportError:
+    # Newer versions of networkx
+    import networkx as nx
 
 
 
