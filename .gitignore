@@ -131,3 +131,4 @@ dmypy.json
 
 # Project files
 _tests.ipynb
+upload_to_pypi.bat
