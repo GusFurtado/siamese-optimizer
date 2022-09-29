@@ -11,7 +11,7 @@ setup(
     'siamese',
     'siamese.models'
   ],
-  version = '0.0.1',
+  version = '0.0.2',
   license = 'MIT',
   description = 'A Python package for manufacturing and assembly lines simulation and optimization.',
   long_description = long_description,
@@ -19,7 +19,7 @@ setup(
   author = 'Gustavo Furtado',
   author_email = 'gustavofurtado2@gmail.com',
   url = 'https://github.com/GusFurtado/siamese-optimizer',
-  download_url = 'https://github.com/GusFurtado/siamese-optimizer/archive/0.0.1.tar.gz',
+  download_url = 'https://github.com/GusFurtado/siamese-optimizer/archive/0.0.2.tar.gz',
 
   keywords = [
     'python',
